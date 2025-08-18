@@ -15,7 +15,11 @@ const PORT = process.env.PORT || 3003;
 
 // Middleware
 app.use(cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: [
+        "http://localhost:3000",                 // local development
+        "http://127.0.0.1:3000",                 // local dev alt
+        "https://quizopedia-ai-quiz.onrender.com" // your deployed frontend
+    ],
     methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
     optionsSuccessStatus: 200
