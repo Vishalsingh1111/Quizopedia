@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@media print {
+
+  /* Base print styles for both modes */
+  body * {
+    visibility: hidden !important;
+  }
+
+  #quiz-print-area,
+  #quiz-print-area * {
+    visibility: visible !important;
+  }
+
+  #quiz-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    background: white;
+    color: black;
+    z-index: 9999;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Dark mode override */
+  .dark #quiz-print-area * {
+    color: black !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+
+
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
