@@ -4,6 +4,8 @@ import { generateAptitudeMCQs, aptitudesaveHistory, aptitudegetHistory } from ".
 import { generateCurrentAffairsMCQs, generateCurrentAffairs, currentAffairsSaveHistory, currentAffairsGetHistory } from '../controllers/currentAffairsController.js';
 import { generateSubjectMCQs, subjectSaveHistory, subjectGetHistory, getClassesAndSubjects } from '../controllers/subjectsController.js';
 import { generateGeneralKnowledgeMCQs, generalKnowledgeSaveHistory, generalKnowledgeGetHistory, getDifficultyLevelsAndTopics } from "../controllers/GeneralKnowledge.js";
+import { generateExamMCQs, examSaveHistory, examGetHistory } from "../controllers/ExamContoller.js";
+
 
 const router = express.Router();
 
@@ -35,4 +37,11 @@ router.post('/generate-general-knowledge-mcqs', generateGeneralKnowledgeMCQs);
 router.post('/general-knowledge-save-history', generalKnowledgeSaveHistory);
 router.get('/general-knowledge-quiz-history', generalKnowledgeGetHistory);
 router.get('/difficulty-levels-and-topics', getDifficultyLevelsAndTopics);
+
+//Exam Based 
+// Exam Quiz routes
+router.post("/generate-exam-mcqs", generateExamMCQs);
+router.post("/exam-save-history", examSaveHistory);
+router.get("/exam-quiz-history", examGetHistory);
+
 export default router;

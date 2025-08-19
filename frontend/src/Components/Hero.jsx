@@ -33,10 +33,7 @@ const Hero = ({ selectedCategory, setSelectedCategory }) => {
                             <option>Subject Based</option>
                             <option>Aptitude Based</option>
                             <option>Exam Based</option>
-                            <option>Current Affairs</option>
                             <option>General Knowledge</option>
-                            <option>Speed Quiz</option>
-                            <option>Mock Tests</option>
                             <option>Premium</option>
                         </select>
                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300 w-5 h-5 pointer-events-none" />
@@ -44,10 +41,10 @@ const Hero = ({ selectedCategory, setSelectedCategory }) => {
 
                     {/* Filter Buttons */}
                     <div className="flex flex-wrap items-center gap-2">
-                        <button className="bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium">Free AI</button>
-                        <button className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-2 rounded-lg text-sm font-medium">Freemium</button>
-                        <button className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium">Paid</button>
-                        <button className="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-2 rounded-lg text-sm font-medium">Free Trial</button>
+                        <button className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-3 py-2 rounded-lg text-sm font-medium">Free</button>
+                        <button className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-2 rounded-lg text-sm font-medium">Premium</button>
+                        <button className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-sm font-medium">Paid</button>
+                        <button className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-2 rounded-lg text-sm font-medium">Free Trial</button>
                     </div>
                 </div>
             </div>
