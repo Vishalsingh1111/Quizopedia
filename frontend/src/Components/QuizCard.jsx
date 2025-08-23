@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, BookOpen, TrendingUp, Trophy, Globe, Clock } from 'lucide-react';
+import { Users, BookOpen, TrendingUp, Trophy, Globe, Clock, Computer } from 'lucide-react';
 
 const QuizCards = ({ selectedCategory }) => {
     const quizCategories = [
@@ -60,6 +60,25 @@ const QuizCards = ({ selectedCategory }) => {
         },
         {
             id: 7,
+            title: "Computer Science MCQ",
+            icon: <Computer className="w-6 h-6" />,
+            description: "Full-length Computer Science tests simulating real exam conditions. Get detailed analytics and performance insights to track your progress.",
+            tag: "TOP",
+            bgGradient: "from-green-400 to-blue-400",
+            category: ["Computer Science"],
+            link: "/Quiz/Computer-Science"
+        },
+        {
+            id: 8,
+            title: "BPSE TRE Teacher Prep Quiz",
+            icon: <Trophy className="w-6 h-6" />,
+            description: "Full-length mock tests simulating real exam conditions. Get detailed analytics and performance insights to track your progress.",
+            bgGradient: "from-green-400 to-blue-400",
+            category: ["Exam Based"],
+            link: " /Quiz/Exam/BPSE-TRE"
+        },
+        {
+            id: 9,
             title: "Speed Quiz Challenge",
             icon: <Clock className="w-6 h-6" />,
             description: "Test your quick thinking abilities with timed quizzes. Challenge yourself with rapid-fire questions and improve your response speed.",
@@ -69,7 +88,7 @@ const QuizCards = ({ selectedCategory }) => {
             link: "/Quiz/Speed-Challenge"
         },
         {
-            id: 8,
+            id: 10,
             title: "Mock Test Series",
             icon: <Trophy className="w-6 h-6" />,
             description: "Full-length mock tests simulating real exam conditions. Get detailed analytics and performance insights to track your progress.",
@@ -78,6 +97,7 @@ const QuizCards = ({ selectedCategory }) => {
             category: ["Mock Tests", "Exam Based", "Premium"],
             link: "/quiz/mock-test-series"
         }
+
     ];
 
     const handleCardClick = (category) => {

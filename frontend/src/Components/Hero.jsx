@@ -34,6 +34,7 @@ const Hero = ({ selectedCategory, setSelectedCategory }) => {
                             <option>Aptitude Based</option>
                             <option>Exam Based</option>
                             <option>General Knowledge</option>
+                            <option>Computer Science</option>
                             <option>Premium</option>
                         </select>
                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300 w-5 h-5 pointer-events-none" />

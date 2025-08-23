@@ -1,13 +1,5 @@
-import AptitudeQuizHistory from "../models/AptitudeModel.js";
 import extractAndParseJSON from "../utils/extractAndParseJSON.js";
 import { getGeminiModel } from "../config/gemini.js";
-
-/**
- * Health check endpoint
- */
-export const healthCheck = (req, res) => {
-    res.json({ status: "OK", timestamp: new Date().toISOString() });
-};
 
 /**
  * Allowed aptitude topics
@@ -52,128 +44,62 @@ Return output as a JSON array only (no extra text). Each element must be an obje
 
 Where "answer" must exactly equal one of the options. Ensure questions are aptitude-focused with detailed step-by-step explanations of the solution process. Provide varied numeric and reasoning formats appropriate to the topic and difficulty.`;
 
-        let mcqs = [];
-        let fallback = false;
+        const model = getGeminiModel();
 
-        try {
-            const model = getGeminiModel();
-            const result = await model.generateContent(prompt);
-            const text = (await result.response).text();
-            console.log('✅ Received response from Gemini API');
+        // Add timeout and better error handling for the API call
+        const result = await Promise.race([
+            model.generateContent(prompt),
+            // new Promise((_, reject) =>
+            //     setTimeout(() => reject(new Error('API timeout after 90 seconds')), 90000)
+            // )
+        ]);
 
-            mcqs = extractAndParseJSON(text);
+        const text = (await result.response).text();
+        console.log('✅ Received response from Gemini API');
 
-        } catch (err) {
-            console.error("❌ Gemini generation failed:", err.message);
-            console.log('⚠️ Using fallback question generator');
-            mcqs = generateFallbackAptitudeMCQs(topic, count);
-            fallback = true;
+        const mcqs = extractAndParseJSON(text);
+
+        if (!Array.isArray(mcqs) || mcqs.length === 0) {
+            throw new Error('Invalid or empty MCQ data received from API');
         }
 
-        if (!Array.isArray(mcqs) || !mcqs.length) {
-            console.error('❌ No valid MCQs generated');
-            return res.status(500).json({ error: "Failed to generate MCQs" });
-        }
+        // Validate that each MCQ has the required fields including explanation
+        const validatedMcqs = mcqs.slice(0, count).map((mcq, index) => {
+            // Validate required fields
+            if (!mcq.question || !mcq.options || !Array.isArray(mcq.options) || !mcq.answer) {
+                console.warn(`⚠️ Invalid MCQ at index ${index}, using fallback`);
+                return {
+                    question: `Sample aptitude question ${index + 1} about ${topic}?`,
+                    options: ["Option A", "Option B", "Option C", "Option D"],
+                    answer: "Option A",
+                    explanation: `This is the correct answer for question ${index + 1} about ${topic}. This represents a fundamental concept in the subject area.`
+                };
+            }
 
-        const finalMcqs = mcqs.slice(0, count);
-        console.log(`✅ Successfully generated ${finalMcqs.length} MCQs for ${topic}`);
+            if (!mcq.explanation || mcq.explanation.trim().length === 0) {
+                // Fallback explanation if missing
+                mcq.explanation = `The correct answer is "${mcq.answer}". This is the most accurate option based on established facts about ${topic}.`;
+            }
+            return mcq;
+        });
+
+        console.log(`✅ Successfully generated ${validatedMcqs.length} MCQs for ${topic}`);
 
         res.json({
-            mcqs: finalMcqs,
+            mcqs: validatedMcqs,
             topic,
             level,
-            fallback,
+            count: validatedMcqs.length,
             generated: new Date().toISOString()
         });
 
     } catch (error) {
-        console.error("❌ generateAptitudeMCQs error:", error);
-        res.status(500).json({
-            error: "Failed to generate MCQs",
-            details: error.message
+        console.error("❌ Gemini generation failed:", error.message);
+
+        // Return API limit hit error instead of fallback questions
+        return res.status(503).json({
+            error: "API_LIMIT_HIT",
+            message: "API limit reached. Please try again later."
         });
     }
 };
-
-/**
- * Save quiz history
- */
-export const aptitudesaveHistory = async (req, res) => {
-    try {
-        const { topic, level, score, total } = req.body;
-        if (!topic || score === undefined || total === undefined) {
-            return res.status(400).json({ error: "Missing fields" });
-        }
-
-        const entry = await AptitudeQuizHistory.create({
-            topic: topic.trim(),
-            level: level || "easy",
-            score: parseInt(score),
-            total: parseInt(total)
-        });
-
-        res.json({ success: true, id: entry._id, timestamp: entry.timestamp });
-    } catch (err) {
-        console.error("saveHistory error:", err);
-        res.status(500).json({ error: "Failed to save history", details: err.message });
-    }
-};
-
-/**
- * Get recent quiz history
- */
-export const aptitudegetHistory = async (req, res) => {
-    try {
-        const history = await AptitudeQuizHistory.find().sort({ timestamp: -1 }).limit(50);
-        res.json({ history, total: history.length });
-    } catch (err) {
-        console.error("getHistory error:", err);
-        res.status(500).json({ error: "Failed to fetch history", details: err.message });
-    }
-};
-
-/**
- * Fallback deterministic aptitude MCQ generator
- */
-function generateFallbackAptitudeMCQs(topic, count) {
-    const mcqs = [];
-    const low = topic.toLowerCase();
-
-    for (let i = 0; i < count; i++) {
-        mcqs.push(makeQuestionForTopic(low, i));
-    }
-    return mcqs;
-}
-
-/**
- * Generates a single MCQ for the given topic & index
- */
-function makeQuestionForTopic(topic, i) {
-    const n = i + 2;
-    if (topic.includes("percentage")) {
-        const price = 100 + i * 5;
-        const discount = 5 + i % 10;
-        const finalPrice = ((price) * (1 - discount / 100)).toFixed(2);
-
-        return {
-            question: `If an item priced at ₹${price} is discounted by ${discount}%, what is the sale price (rounded to 2 decimals)?`,
-            options: [
-                finalPrice,
-                `${((price) * (1 - (3 + i % 5) / 100)).toFixed(2)}`,
-                `${((price) * (1 - (8 + i % 7) / 100)).toFixed(2)}`,
-                `${((price) * (1 - (10 + i % 6) / 100)).toFixed(2)}`
-            ],
-            answer: finalPrice,
-            explanation: `To solve this: 1) First calculate the discount amount: ₹${price} × ${discount}% = ₹${(price * discount / 100).toFixed(2)}. 2) Then subtract the discount from original price: ₹${price} - ₹${(price * discount / 100).toFixed(2)} = ₹${finalPrice}. The calculation can also be done directly using: Original Price × (1 - discount%/100).`
-        };
-    }
-
-    // Generic math question with explanation
-    const sum = n + n * 2;
-    return {
-        question: `What is ${n} + ${n * 2}?`,
-        options: [`${sum}`, `${n * n}`, `${n * 3 + 1}`, `${n * 2}`],
-        answer: `${sum}`,
-        explanation: `To solve this: 1) First identify the values: ${n} and ${n * 2}. 2) Then simply add them: ${n} + ${n * 2} = ${sum}. This is a basic arithmetic addition problem where we add two numbers directly.`
-    };
-}

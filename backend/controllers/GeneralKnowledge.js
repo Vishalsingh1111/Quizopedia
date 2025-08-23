@@ -1,4 +1,3 @@
-import GeneralKnowledgeQuizHistory from "../models/GeneralKnowledgeModel.js";
 import extractAndParseJSON from "../utils/extractAndParseJSON.js";
 import { getGeminiModel } from "../config/gemini.js";
 
@@ -40,7 +39,7 @@ const QUIZ_TOPICS = [
 ];
 
 /**
- * Generate MCQs for general knowledge quizzes (with explanation + logs)
+ * Generate MCQs for general knowledge quizzes
  */
 export const generateGeneralKnowledgeMCQs = async (req, res) => {
     try {
@@ -60,6 +59,8 @@ export const generateGeneralKnowledgeMCQs = async (req, res) => {
         // Clean inputs
         level = level.trim();
         topic = topic.trim();
+
+        console.log(`🧠 Generating ${questionCount} General Knowledge MCQs for ${level} level - ${topic}`);
 
         // Create comprehensive prompt based on topic
         let prompt = "";
@@ -169,10 +170,7 @@ Format response as JSON array ONLY:
 ]`;
         }
 
-        console.log(`🧠 Generating ${questionCount} General Knowledge MCQs for ${level} level - ${topic}`);
-
         let mcqs = [];
-        let fallback = false;
 
         try {
             const model = getGeminiModel();
@@ -196,13 +194,21 @@ Format response as JSON array ONLY:
 
             console.log(`✅ Successfully generated ${mcqs.length} General Knowledge MCQs`);
         } catch (err) {
-            console.error("❌ Gemini generation failed, using fallback:", err.message);
-            mcqs = generateFallbackGeneralKnowledgeMCQs(level, topic, questionCount);
-            fallback = true;
+            console.error("❌ Gemini generation failed:", err.message);
+
+            // Return API limit hit error instead of fallback questions
+            return res.status(503).json({
+                error: "API_LIMIT_HIT",
+                message: "API limit reached. Please try again later."
+            });
         }
 
         if (!Array.isArray(mcqs) || !mcqs.length) {
-            return res.status(500).json({ error: "Failed to generate MCQs" });
+            console.error('❌ No valid MCQs generated');
+            return res.status(503).json({
+                error: "API_LIMIT_HIT",
+                message: "Failed to generate valid MCQs. Please try again later."
+            });
         }
 
         res.json({
@@ -210,48 +216,15 @@ Format response as JSON array ONLY:
             level,
             topic,
             count: mcqs.length,
-            fallback
+            generated: new Date().toISOString()
         });
     } catch (error) {
         console.error("generateGeneralKnowledgeMCQs error:", error);
-        res.status(500).json({ error: "Failed to generate MCQs", details: error.message });
-    }
-};
-
-/**
- * Save quiz history
- */
-export const generalKnowledgeSaveHistory = async (req, res) => {
-    try {
-        const { level, topic, score, total } = req.body;
-        if (!level || !topic || score === undefined || total === undefined) {
-            return res.status(400).json({ error: "Missing required fields" });
-        }
-
-        const entry = await GeneralKnowledgeQuizHistory.create({
-            level: level.trim(),
-            topic: topic.trim(),
-            score: parseInt(score),
-            total: parseInt(total)
+        res.status(503).json({
+            error: "API_LIMIT_HIT",
+            message: "Service temporarily unavailable. Please try again later.",
+            details: error.message
         });
-
-        res.json({ success: true, id: entry._id, timestamp: entry.timestamp });
-    } catch (err) {
-        console.error("generalKnowledgeSaveHistory error:", err);
-        res.status(500).json({ error: "Failed to save history", details: err.message });
-    }
-};
-
-/**
- * Get recent quiz history
- */
-export const generalKnowledgeGetHistory = async (req, res) => {
-    try {
-        const history = await GeneralKnowledgeQuizHistory.find().sort({ timestamp: -1 }).limit(50);
-        res.json({ history, total: history.length });
-    } catch (err) {
-        console.error("generalKnowledgeGetHistory error:", err);
-        res.status(500).json({ error: "Failed to fetch history", details: err.message });
     }
 };
 
@@ -264,88 +237,3 @@ export const getDifficultyLevelsAndTopics = (req, res) => {
         topics: QUIZ_TOPICS
     });
 };
-
-/**
- * Fallback deterministic general knowledge MCQ generator with explanation
- */
-function generateFallbackGeneralKnowledgeMCQs(level, topic, count) {
-    const mcqs = [];
-    for (let i = 0; i < count; i++) {
-        const q = makeQuestionForGeneralKnowledge(level, topic, i);
-        q.explanation = `The answer "${q.answer}" is correct based on general knowledge facts about ${topic} at ${level} difficulty level.`;
-        mcqs.push(q);
-    }
-    return mcqs;
-}
-
-/**
- * Generates a single fallback general knowledge MCQ
- */
-function makeQuestionForGeneralKnowledge(level, topic, i) {
-    const topicLower = topic.toLowerCase();
-
-    // Geography questions
-    if (topicLower.includes("geography")) {
-        const countries = ["India", "China", "USA", "Russia", "Brazil"];
-        const capitals = ["New Delhi", "Beijing", "Washington DC", "Moscow", "Brasilia"];
-        const country = countries[i % countries.length];
-        const capital = capitals[i % capitals.length];
-
-        return {
-            question: `What is the capital of ${country}?`,
-            options: [capital, "London", "Paris", "Tokyo"],
-            answer: capital
-        };
-    }
-
-    // Science questions  
-    if (topicLower.includes("science")) {
-        const facts = [
-            { q: "What is the chemical symbol for water?", a: "H2O", opts: ["H2O", "CO2", "O2", "NaCl"] },
-            { q: "How many bones are in the adult human body?", a: "206", opts: ["206", "205", "207", "200"] },
-            { q: "What planet is known as the Red Planet?", a: "Mars", opts: ["Mars", "Venus", "Jupiter", "Saturn"] }
-        ];
-        const fact = facts[i % facts.length];
-        return {
-            question: fact.q,
-            options: fact.opts,
-            answer: fact.a
-        };
-    }
-
-    // History questions
-    if (topicLower.includes("history")) {
-        const events = [
-            { q: "In which year did India gain independence?", a: "1947", opts: ["1947", "1946", "1948", "1950"] },
-            { q: "Who was the first Prime Minister of India?", a: "Jawaharlal Nehru", opts: ["Jawaharlal Nehru", "Mahatma Gandhi", "Sardar Patel", "Subhas Chandra Bose"] }
-        ];
-        const event = events[i % events.length];
-        return {
-            question: event.q,
-            options: event.opts,
-            answer: event.a
-        };
-    }
-
-    // Sports questions
-    if (topicLower.includes("sports")) {
-        const sports = [
-            { q: "How many players are there in a cricket team?", a: "11", opts: ["11", "10", "12", "9"] },
-            { q: "Which country hosted the 2020 Olympics?", a: "Japan", opts: ["Japan", "China", "Brazil", "UK"] }
-        ];
-        const sport = sports[i % sports.length];
-        return {
-            question: sport.q,
-            options: sport.opts,
-            answer: sport.a
-        };
-    }
-
-    // Default general question
-    const num = (i + 1) * 2;
-    return {
-        question: `What is ${num} multiplied by 2?`,
-        options: [`${num * 2}`, `${num + 2}`, `${num * 3}`, `${num - 2}`],
-        answer: `${num * 2}`
-    };
-}

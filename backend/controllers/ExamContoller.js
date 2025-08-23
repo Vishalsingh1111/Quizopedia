@@ -1,4 +1,3 @@
-import ExamQuizHistory from "../models/ExamModel.js";
 import extractAndParseJSON from "../utils/extractAndParseJSON.js";
 import { getGeminiModel } from "../config/gemini.js";
 
@@ -127,7 +126,6 @@ Where "answer" must exactly equal one of the options. Make questions challenging
         }
 
         let mcqs = [];
-        let fallback = false;
 
         try {
             const model = getGeminiModel();
@@ -139,14 +137,20 @@ Where "answer" must exactly equal one of the options. Make questions challenging
 
         } catch (err) {
             console.error("❌ Gemini generation failed:", err.message);
-            console.log('⚠️ Using fallback question generator');
-            mcqs = generateFallbackExamMCQs(exam, topic, count);
-            fallback = true;
+
+            // Return API limit hit error instead of fallback questions
+            return res.status(503).json({
+                error: "API_LIMIT_HIT",
+                message: "API limit reached. Please try again later."
+            });
         }
 
         if (!Array.isArray(mcqs) || !mcqs.length) {
             console.error('❌ No valid MCQs generated');
-            return res.status(500).json({ error: "Failed to generate MCQs" });
+            return res.status(503).json({
+                error: "API_LIMIT_HIT",
+                message: "Failed to generate valid MCQs. Please try again later."
+            });
         }
 
         const finalMcqs = mcqs.slice(0, count);
@@ -156,110 +160,15 @@ Where "answer" must exactly equal one of the options. Make questions challenging
             mcqs: finalMcqs,
             exam,
             topic,
-            fallback,
             generated: new Date().toISOString()
         });
 
     } catch (error) {
         console.error("❌ generateExamMCQs error:", error);
-        res.status(500).json({
-            error: "Failed to generate MCQs",
+        res.status(503).json({
+            error: "API_LIMIT_HIT",
+            message: "Service temporarily unavailable. Please try again later.",
             details: error.message
         });
     }
 };
-
-/**
- * Save quiz history
- */
-export const examSaveHistory = async (req, res) => {
-    try {
-        const { exam, topic, score, total } = req.body;
-        if (!exam || score === undefined || total === undefined) {
-            return res.status(400).json({ error: "Missing required fields" });
-        }
-
-        const entry = await ExamQuizHistory.create({
-            exam: exam.trim(),
-            topic: topic || "Miscellaneous",
-            score: parseInt(score),
-            total: parseInt(total)
-        });
-
-        res.json({ success: true, id: entry._id, timestamp: entry.timestamp });
-    } catch (err) {
-        console.error("examSaveHistory error:", err);
-        res.status(500).json({ error: "Failed to save history", details: err.message });
-    }
-};
-
-/**
- * Get recent quiz history
- */
-export const examGetHistory = async (req, res) => {
-    try {
-        const history = await ExamQuizHistory.find().sort({ timestamp: -1 }).limit(50);
-        res.json({ history, total: history.length });
-    } catch (err) {
-        console.error("examGetHistory error:", err);
-        res.status(500).json({ error: "Failed to fetch history", details: err.message });
-    }
-};
-
-/**
- * Fallback deterministic exam MCQ generator
- */
-function generateFallbackExamMCQs(exam, topic, count) {
-    const mcqs = [];
-
-    for (let i = 0; i < count; i++) {
-        mcqs.push(makeQuestionForExam(exam, topic, i));
-    }
-    return mcqs;
-}
-
-/**
- * Generates a single MCQ for the given exam, topic & index
- */
-function makeQuestionForExam(exam, topic, i) {
-    const questionTemplates = {
-        "JEE Main": {
-            question: `In a physics problem for JEE Main, if a particle moves with velocity ${10 + i} m/s for ${2 + i} seconds, what is the displacement?`,
-            answer: `${(10 + i) * (2 + i)} m`,
-            explanation: `Displacement = velocity × time = ${10 + i} × ${2 + i} = ${(10 + i) * (2 + i)} m. This is a basic kinematic equation used in JEE Main physics.`
-        },
-        "NEET": {
-            question: `In human anatomy, which organ system is primarily responsible for gas exchange in the body?`,
-            answer: "Respiratory system",
-            explanation: "The respiratory system, including lungs and airways, facilitates oxygen intake and carbon dioxide removal through alveolar gas exchange."
-        },
-        "SSC CGL": {
-            question: `If ${15 + i}% of a number is ${(15 + i) * 4}, what is the number?`,
-            answer: `${((15 + i) * 4 * 100) / (15 + i)}`,
-            explanation: `Let the number be x. Then ${15 + i}% of x = ${(15 + i) * 4}. So (${15 + i}/100) × x = ${(15 + i) * 4}. Therefore x = ${((15 + i) * 4 * 100) / (15 + i)}.`
-        },
-        "UPSC Civil Services": {
-            question: `Which article of the Indian Constitution deals with the Right to Constitutional Remedies?`,
-            answer: "Article 32",
-            explanation: "Article 32 is known as the 'Heart and Soul' of the Constitution as it guarantees the right to constitutional remedies and empowers citizens to approach the Supreme Court directly."
-        }
-    };
-
-    const template = questionTemplates[exam] || {
-        question: `Sample question ${i + 1} for ${exam} on ${topic}. What is ${5 + i} + ${3 + i}?`,
-        answer: `${8 + 2 * i}`,
-        explanation: `This is a basic arithmetic problem: ${5 + i} + ${3 + i} = ${8 + 2 * i}. Such questions test fundamental mathematical skills required for ${exam}.`
-    };
-
-    return {
-        question: template.question,
-        options: [
-            template.answer,
-            `${parseInt(template.answer) + 1}`,
-            `${parseInt(template.answer) - 1}`,
-            `${parseInt(template.answer) + 2}`
-        ].filter((opt, index, arr) => arr.indexOf(opt) === index), // Remove duplicates
-        answer: template.answer,
-        explanation: template.explanation
-    };
-}

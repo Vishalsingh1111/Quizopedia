@@ -1,4 +1,3 @@
-import CurrentAffairsHistory from "../models/currentAffairsModel.js";
 import extractAndParseJSON from "../utils/extractAndParseJSON.js";
 import { getGeminiModel } from "../config/gemini.js";
 
@@ -63,14 +62,17 @@ Where "answer" must exactly equal one of the options. Ensure questions are exami
             mcqs = extractAndParseJSON(text);
         } catch (err) {
             console.error("❌ Gemini generation failed:", err.message);
-            console.log("⚠️ Using fallback MCQ generator");
-            mcqs = generateFallbackCurrentAffairsMCQs(timePeriod, count);
+            console.log("⚠️ API limit reached - returning error");
             fallback = true;
         }
 
-        if (!Array.isArray(mcqs) || !mcqs.length) {
-            console.error("❌ No valid MCQs generated");
-            return res.status(500).json({ error: "Failed to generate current affairs MCQs" });
+        if (fallback || !Array.isArray(mcqs) || !mcqs.length) {
+            console.error("❌ No valid MCQs generated or API limit reached");
+            return res.status(429).json({
+                error: "API limit reached",
+                fallback: true,
+                message: "The API has hit its limit. Please try again later."
+            });
         }
 
         const finalMcqs = mcqs.slice(0, count);
@@ -79,13 +81,14 @@ Where "answer" must exactly equal one of the options. Ensure questions are exami
         res.json({
             mcqs: finalMcqs,
             timePeriod,
-            fallback,
+            fallback: false,
             generated: new Date().toISOString(),
         });
     } catch (error) {
         console.error("❌ generateCurrentAffairsMCQs error:", error);
         res.status(500).json({
             error: "Failed to generate current affairs MCQs",
+            fallback: true,
             details: error.message,
         });
     }
@@ -153,14 +156,17 @@ Return output as a JSON array of strings only (no extra text). Each string shoul
             }
         } catch (err) {
             console.error("❌ Gemini generation failed:", err.message);
-            console.log("⚠️ Using fallback current affairs generator");
-            affairs = generateFallbackCurrentAffairs(timePeriod);
+            console.log("⚠️ API limit reached - returning error");
             fallback = true;
         }
 
-        if (!Array.isArray(affairs) || !affairs.length) {
-            console.error("❌ No valid current affairs generated");
-            return res.status(500).json({ error: "Failed to generate current affairs" });
+        if (fallback || !Array.isArray(affairs) || !affairs.length) {
+            console.error("❌ No valid current affairs generated or API limit reached");
+            return res.status(429).json({
+                error: "API limit reached",
+                fallback: true,
+                message: "The API has hit its limit. Please try again later."
+            });
         }
 
         console.log(`✅ Successfully generated ${affairs.length} current affairs for ${timePeriod}`);
@@ -168,114 +174,15 @@ Return output as a JSON array of strings only (no extra text). Each string shoul
         res.json({
             affairs,
             timePeriod,
-            fallback,
+            fallback: false,
             generated: new Date().toISOString(),
         });
     } catch (error) {
         console.error("❌ generateCurrentAffairs error:", error);
         res.status(500).json({
             error: "Failed to generate current affairs",
+            fallback: true,
             details: error.message,
         });
     }
 };
-
-/**
- * Save current affairs quiz history
- */
-export const currentAffairsSaveHistory = async (req, res) => {
-    try {
-        const { timePeriod, score, total } = req.body;
-        if (!timePeriod || score === undefined || total === undefined) {
-            return res.status(400).json({ error: "Missing fields" });
-        }
-
-        const entry = await CurrentAffairsHistory.create({
-            timePeriod: timePeriod.trim(),
-            score: parseInt(score),
-            total: parseInt(total),
-        });
-
-        res.json({ success: true, id: entry._id, timestamp: entry.timestamp });
-    } catch (err) {
-        console.error("❌ saveHistory error:", err);
-        res.status(500).json({ error: "Failed to save history", details: err.message });
-    }
-};
-
-/**
- * Get current affairs quiz history
- */
-export const currentAffairsGetHistory = async (req, res) => {
-    try {
-        const history = await CurrentAffairsHistory.find().sort({ timestamp: -1 }).limit(50);
-        res.json({ history, total: history.length });
-    } catch (err) {
-        console.error("❌ getHistory error:", err);
-        res.status(500).json({ error: "Failed to fetch history", details: err.message });
-    }
-};
-
-/**
- * Fallback deterministic current affairs MCQ generator
- */
-function generateFallbackCurrentAffairsMCQs(timePeriod, count) {
-    const mcqs = [];
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().toLocaleString("default", { month: "long" });
-
-    const sampleQuestions = [
-        {
-            question: `Which organization recently announced new climate targets for ${currentYear}?`,
-            options: ["United Nations", "World Bank", "IMF", "WHO"],
-            answer: "United Nations",
-            explanation: "The UN frequently sets global climate targets as part of its sustainability agenda.",
-        },
-        {
-            question: `In ${currentMonth} ${currentYear}, which country hosted a major international summit?`,
-            options: ["India", "United States", "Germany", "Japan"],
-            answer: "India",
-            explanation: "India recently hosted a significant international summit highlighting global issues.",
-        },
-        {
-            question: `What is the current GDP growth rate target set by the Indian government for FY ${currentYear}-${(currentYear + 1) % 100}?`,
-            options: ["6.5%", "7.0%", "7.5%", "8.0%"],
-            answer: "7.0%",
-            explanation: "The Government of India set a GDP target of around 7% for sustainable economic growth.",
-        },
-        {
-            question: `Which Indian state recently launched a major renewable energy project in ${currentYear}?`,
-            options: ["Rajasthan", "Gujarat", "Tamil Nadu", "Karnataka"],
-            answer: "Rajasthan",
-            explanation: "Rajasthan has been leading renewable energy expansion with solar and wind projects.",
-        },
-        {
-            question: `The Reserve Bank of India's current repo rate as of ${currentYear} is:`,
-            options: ["6.50%", "6.75%", "7.00%", "7.25%"],
-            answer: "6.50%",
-            explanation: "RBI maintained the repo rate at 6.50% to balance inflation and growth.",
-        },
-    ];
-
-    for (let i = 0; i < count; i++) {
-        mcqs.push(sampleQuestions[i % sampleQuestions.length]);
-    }
-    return mcqs;
-}
-
-/**
- * Fallback current affairs content generator
- */
-function generateFallbackCurrentAffairs(timePeriod) {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().toLocaleString("default", { month: "long" });
-
-    return [
-        `India's GDP growth rate for the fiscal year ${currentYear}-${(currentYear + 1) % 100} is projected at 6.8%.`,
-        `The Reserve Bank of India maintained the repo rate at 6.50% in ${currentMonth} ${currentYear}.`,
-        `India launched a new satellite mission successfully in ${currentYear}.`,
-        `The government announced a ₹10,000 crore digital infrastructure project for rural connectivity.`,
-        `India's exports rose 15% YoY, crossing $400 billion in trade.`,
-        `The Prime Minister unveiled new clean energy initiatives during a policy speech.`,
-    ];
-}

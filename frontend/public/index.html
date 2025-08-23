@@ -8,36 +8,94 @@
   <meta name="theme-color" content="#000000" />
   <meta name="description" content="Web site created using create-react-app" />
   <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon.png" />
-  <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-  <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+  <title>Quizopedia-AI Powered Quiz App</title>
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-  <title>Quizopedia-AI Powered Quize App</title>
+  <!-- Google Translate styles -->
+  <style>
+    .goog-te-banner-frame.skiptranslate {
+      display: none !important;
+    }
+
+    body {
+      top: 0px !important;
+    }
+
+    .goog-te-gadget {
+      display: none !important;
+    }
+
+    #google_translate_element {
+      position: fixed;
+      top: -1000px;
+      left: -1000px;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Ensure the dropdown is accessible but hidden */
+    .goog-te-combo {
+      position: fixed !important;
+      top: -1000px !important;
+      left: -1000px !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  </style>
 </head>
 
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
-  <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+  <!-- Google Translate element - positioned off-screen -->
+  <div id="google_translate_element"></div>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+  <script type="text/javascript">
+    // Global flag to track initialization
+    window.googleTranslateReady = false;
+
+    function googleTranslateElementInit() {
+      try {
+        console.log('Initializing Google Translate...');
+
+        new google.translate.TranslateElement({
+          pageLanguage: "en",
+          includedLanguages: "en,hi,fr,es,de,ja,zh-CN",
+          layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+          autoDisplay: false
+        }, "google_translate_element");
+
+        // Mark as ready after a short delay
+        setTimeout(() => {
+          window.googleTranslateReady = true;
+          console.log('Google Translate initialized successfully');
+
+          // Dispatch custom event when ready
+          window.dispatchEvent(new CustomEvent('googleTranslateReady'));
+        }, 1000);
+
+      } catch (error) {
+        console.error('Error initializing Google Translate:', error);
+      }
+    }
+
+    // Fallback initialization
+    window.addEventListener('load', function () {
+      setTimeout(() => {
+        if (!window.googleTranslateReady && typeof google !== 'undefined' && google.translate) {
+          console.log('Attempting fallback initialization...');
+          googleTranslateElementInit();
+        }
+      }, 2000);
+    });
+  </script>
+
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async
+    defer>
+    </script>
 </body>
 
 </html>

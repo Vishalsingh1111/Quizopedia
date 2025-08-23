@@ -122,7 +122,7 @@ const Footer = () => {
                                     { icon: Home, text: 'Home', to: '/' },
                                     { icon: Brain, text: 'Aptitude Tests', to: '/Quiz/Aptitude' },
                                     { icon: BookOpen, text: 'Subject Quizzes', to: '/Quiz/Subject' },
-                                    { icon: GraduationCap, text: 'Exam Preparation', to: '/Quiz/Exam-Preparation' },
+                                    { icon: GraduationCap, text: 'Exam Preparation', to: '/Quiz/Exam-Based' },
                                     { icon: Newspaper, text: 'Current Affairs', to: '/Quiz/Reader/Current-Affairs' },
                                     { icon: ClipboardCheck, text: 'Mock Tests', to: '/Quiz/Mock-Test' }
                                 ].map((item, index) => (
